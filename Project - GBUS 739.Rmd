@@ -75,7 +75,7 @@ car <- car %>% mutate(gender_mf = case_when(
 ```
 
 ```{r}
-# create continent variable
+# create continent/region variable
 library(countrycode)
 car$continent <- countrycode(sourcevar = car[, "country"],
                             origin = "country.name",
@@ -172,13 +172,15 @@ net worth & car purchase amount: 49%
 
 
 Is there a linear relationship between age and car purchase amount ? How does gender affect this?
-```{r}
+```{r, fig.height=8, fig.width=12}
 # scatter plot
 ggplot(data = car, mapping = aes(x = age,  y = car_purchase_amount, color = gender_mf)) +
        geom_point() +
   geom_smooth(color = 'red') +
+  scale_y_continuous(labels = comma) +
   scale_color_manual(values = c('darkorchid2','chartreuse3')) + 
          labs(title = "Correlation Between Age & Gender to Car Purchase Amount",
+              subtitle = "Car Purchase Amount is in USD",
             x = "Customer Age",
             y = "Car Purchase Amount",
             color = 'Gender')
@@ -188,11 +190,14 @@ does not seem to be many outliers either. The relationship is strong. Gender doe
 
 
 What is the relationship between salary, car purchase amount by age group?
-```{r}
+```{r, fig.height=8, fig.width=12}
 ggplot(data = car, mapping = aes(x = annual_salary,
                                     y = car_purchase_amount, fill = age_group)) +
   geom_boxplot() +
+  scale_x_continuous(labels=comma) +
+  scale_y_continuous(labels=comma) +
            labs(title = "Box plot of Salary and Car Purchase Amount by Age Group",
+                subtitle = "Values are in USD",
             x = "Customer Annual Salary",
             y = "Customer Car Purchase Amount",
             fill = "Age Group")
@@ -205,7 +210,7 @@ so thier savings are jobs may not be that good.
 
 
 Counts of each age group's purchase of cars
-```{r}
+```{r, fig.height=8, fig.width=12}
 ggplot(data = car, aes(x = age_group, fill = gender_mf)) +
     geom_bar(stat = "count") +
     labs(title = "Amount of Cars Purchased by Age Group & Gender",
@@ -217,24 +222,60 @@ around 105 and then 41-45 at around 95.
 
 
 Median income and car purchase price by continent
-
 ```{r, fig.height=8, fig.width=12}
+library(scales)
 ggplot(data = car,
        mapping = aes(x = annual_salary, y = car_purchase_amount, fill = continent)) +
   geom_point() +
+  scale_x_continuous(labels=comma) +
+  scale_y_continuous(labels=comma) +
   geom_smooth(method = "loess") +
-  labs(title = "Association of Annual Salary and Car Purchase Amount by Region", 
+  labs(title = "Association of Annual Salary and Car Purchase Amount by Region",
+       subtitle = "Values are in USD",
        x = "Customer Annual Salary", 
        y = "Customer Car Purchase Amount",
        fill = "Continent") +
-  theme_bw() +
-  scale_x_continuous(labels = comma)
-
+  theme_bw()
 ```
 This plot gives more insight into how annual salary and car purchase amount are associated by region. It looks like Latin America & Carribean
 have the lowest annual salary around 20,000 with it maxing around 90,000. Europe and Center Asia has the highest salary at 100,000. North America
 has the highest car purchase amount around 90,000.
 
+
+Is there a linear relationship between credit card debt and car purchase amount ? How does gender affect this?
+```{r, fig.height=8, fig.width=12}
+# scatter plot
+ggplot(data = car, mapping = aes(x = credit_card_debt,  y = car_purchase_amount, color = gender_mf)) +
+       geom_point() +
+  geom_smooth(color = 'red') +
+  scale_x_continuous(labels=comma) +
+scale_y_continuous(labels=comma) +
+  scale_color_manual(values = c('deeppink','blue3')) + 
+         labs(title = "Correlation Between Credit Card Debt & Gender to Car Purchase Amount",
+              subtitle = "Values are in USD",
+            x = "Customer Credit Card Debt",
+            y = "Customer Car Purchase Amount",
+            color = 'Gender')
+```
+Thre does not seem to be much linear association between Car purchase amount and credit card debt. Those with low credit card debt and those with high
+credit card debt seem to purhase similar values of cars. Most of the customers have around 5,000 - 15,000 of credit card debt this does not seem to change the value
+of car purchased, which is around 30,000 - 50,000
+
+Is there a linear relationship between car purchase amount and net worth?
+```{r, fig.height=8, fig.width=12}
+ggplot(car, aes(net_worth, car_purchase_amount))+
+  geom_jitter(width = .5, size=1, color = 'blue') +
+  geom_smooth(color = 'red') +
+  scale_x_continuous(labels=comma) +
+scale_y_continuous(labels=comma) +
+  labs(y="Customer Car Purchase Amount", 
+       x="Customer Networth", 
+       title="Correlation Between Customer Networth and Car Purchase Amount",
+       subtitle = "Values are in USD")
+```
+It seems that as networth goes up so does car purchase amount. This makes sense those with a higher networth would usually have more disposable cash. This 
+would allow them purchase higher valued cars. Those with a higher networth may also have a status or image to keep up with. They are known to have a high 
+net worth, so they must present them selfs in nicer higher valued vehicles. 
 ***Model Creation/Pre-processing***
 
 
