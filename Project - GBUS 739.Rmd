@@ -17,6 +17,10 @@ library(lubridate)
 library(GGally)
 library(psych)
 library(corrplot)
+library(caTools)
+library(forecast)
+library(easystats)
+library(scales)
 ```
 
 ```{r}
@@ -82,6 +86,7 @@ car$continent <- countrycode(sourcevar = car[, "country"],
                             destination = "region")
 
 ```
+
 
 
 ***Data Exploration/Visualization***
@@ -161,6 +166,14 @@ The minimum car purchase amount is 9,000 and the max is 80,000
 Overall correlation of all variables
 ```{r, fig.width=9, fig.height= 8}
 car_numeric <- select(car, c('gender','age', 'annual_salary', 'credit_card_debt', 'net_worth', 'car_purchase_amount'))
+
+#round all variables to whole numbers
+car_numeric$age <- round(car_numeric$age,0)
+car_numeric$annual_salary <- round(car_numeric$annual_salary,0)
+car_numeric$credit_card_debt <- round(car_numeric$credit_card_debt,0)
+car_numeric$net_worth <- round(car_numeric$net_worth,0)
+car_numeric$car_purchase_amount <- round(car_numeric$car_purchase_amount,0)
+
 corrplot(cor(car_numeric),type = 'upper', method = 'color', diag = FALSE,
          tl.srt = 45, addCoef.col = 'black',
          main = 'Correlation Between Numerical Variables',  mar=c(0,0,1,0))
@@ -229,7 +242,7 @@ ggplot(data = car,
   geom_point() +
   scale_x_continuous(labels=comma) +
   scale_y_continuous(labels=comma) +
-  geom_smooth(method = "loess") +
+  geom_smooth(method = "loess", color = 'red') +
   labs(title = "Association of Annual Salary and Car Purchase Amount by Region",
        subtitle = "Values are in USD",
        x = "Customer Annual Salary", 
@@ -276,23 +289,125 @@ scale_y_continuous(labels=comma) +
 It seems that as networth goes up so does car purchase amount. This makes sense those with a higher networth would usually have more disposable cash. This 
 would allow them purchase higher valued cars. Those with a higher networth may also have a status or image to keep up with. They are known to have a high 
 net worth, so they must present them selfs in nicer higher valued vehicles. 
+
+
+
 ***Model Creation/Pre-processing***
 
 
+# Multi-Linear Regression all variables
+We will be using gender, age, salary, credit card debt and wet worth to predict car purchase amount
+
+# Split
+```{r}
+library(rsample)
+# Specify the set.seed option to reproduce the random sampling
+set.seed(100)
+
+# Generate the rsplit object
+car_split <- initial_split(car_numeric, prop = 0.60)
+
+# Extract the training dataset from split object
+car_training <- car_split %>% 
+  training()
+# Extract the validation dataset from split object
+car_valid <- car_split %>% 
+  testing()
+```
+
+```{r}
+# run linear regression model
+car_reg <- lm(car_purchase_amount~., data=car_training,na.action=na.exclude)
+summary(car_reg)
+```
+
+
+By looking at the regression output we can see which variables have the most
+affect on car purchasing price, we are able to see this through the t and p values. 
+The variable that has the highest correlation is age the next
+variable is annual salary, then net_worth . These values all make sense 
+from a general stand poiint. Those who have a higher annual salary, are most likely older and 
+will also have a higher net worth. With these combination of variables they more likely to be able
+to afford and purchase a nicer higher priced vehicle. This is why the t-values are all positive. The 
+same can be said for lower priced vehicles. Someone with a lower annual salary, lower age and lower net
+worth is likely to buy a lower priced vehicle. Gender and credit card debt do not seem to have
+much correlation on car purchasing price. With an R sqaured values of 0.9996 , we can
+make the assumption that most of the variation in the data is explained from these varibles alone.
+meaning that this model holds true and serves a good representation of how the data acts in a real enviroment. This also shows the model has very high accuracy.
+
+```{r}
+pred_t <- predict(car_reg)
+pred_v <- predict(car_reg, newdata=car_valid)
+```
+```{r}
+## evaluate performance
+# training
+accuracy(pred_t, car_training$car_purchase_amount)
+# validation
+accuracy(pred_v, car_valid$car_purchase_amount)
+```
 
 
 
+# Predicting new values
 
-***Model Results***
+Here we will read in the first 5 customers. The point of this is to see if our model
+will predict the same or similar car purchase amount for these customers. We can compare the model output
+to the actual.
+```{r}
+first_five_customer <- data.frame(gender=c(0,0,1,1,1), 
+                           age=c(42,41,43,58,57), 
+                           annual_salary=c(62812 ,66647, 53799, 79370, 59729), 
+                           credit_card_debt=c(11609, 9573, 11160, 14426, 5359),
+                           net_worth=c(238961, 530974, 638467, 548599, 560304))
+predict(car_reg, newdata=first_five_customer)
+```
 
+Actual 1: 35321 Predicted 1: 35437 Difference: 116
+Actual 2: 45116 Predicted 2: 45224 Difference: 108
+Actual 3: 42926 Predicted 3: 42823 Difference: 103
+Actual 4: 67422 Predicted 4: 67238 Difference: 184
+Actual 5: 55915 Predicted 5: 55616 Difference: 299
 
+It seems the model was able to predicted pretty closely to the original amount.
+This shows the model is working correctly and pretty accurately.
+
+we can now create 5 new customers and see what thier car purchase amount would be. Here is 
+where the model can be used in a real world application with new data. Someone interested like
+a marketing specialist or care sales person can input certain demographics or customers
+and change thier tactics based on the output.
+
+```{r}
+new_customer <- data.frame(gender=c(0,1,0,0,1), 
+                           age=c(34,88,55,39,22), 
+                           annual_salary=c(56784 ,44444, 20000, 110000, 96555), 
+                           credit_card_debt=c(11655, 95473, 160, 2226, 6659),
+                           net_worth=c(200000, 546787, 864233, 10000, 1005450))
+predict(car_reg, newdata=new_customer)
+```
+
+***Model Results/Visualization***
+
+```{r, fig.height= 10, fig.width=12}
+check_model(toyota_reg)
+```
+```{r}
+library('sjPlot')
+plot_model(car_reg, type = 'diag', show.values = TRUE)
+```
 
 
 
 ***Analysis/Findings***
+Looking at the plot_model output gives us a lot of information about how the variables are related.
+The first plot shows variance inflation factors. Which shows if the model is affected negatively by
+multicolinearity. Are values are under 1 for all variables which shows there is not redundant
+information coming from these variables when used with each other. The non-nomality residual plot
+shows the predictied values are closely related to the observed values. Meaning the regression
+model performed well in comparission to the actual data. The model only has a few outliers
+and follows a normal distribution on the next plot. Overall, this model performs pretty good.
+This model could be used to target specific groups with certain vehicles. This could save 
+lots of time, money and man power. If a customer or demographic is only likely to 
+purchase a vehicle less than 30,000 there is no need to try and get them to purchase a vehicle higher
+than that. 
 
-
-
-
-
-***Future Work***
